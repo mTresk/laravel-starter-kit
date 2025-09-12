@@ -1,0 +1,34 @@
+.form-field {
+  display: flex;
+  gap: rem(20);
+  align-items: center;
+  justify-content: space-between;
+  padding: rem(15) rem(20);
+  cursor: text;
+  border: rem(1) solid var(--color-gray);
+  border-radius: rem(15);
+
+  &--select {
+    padding: 0;
+  }
+
+  &__input {
+    width: 100%;
+    color: var(--color-main);
+    background-color: transparent;
+
+    &::placeholder {
+      color: var(--color-gray);
+    }
+
+    &:focus {
+      &::placeholder {
+        opacity: 0;
+      }
+    }
+
+    &--textarea {
+      resize: none;
+    }
+  }
+}

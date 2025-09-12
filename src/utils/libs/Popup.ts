@@ -1,0 +1,236 @@
+import { bodyLock, bodyUnlock } from '@/utils/base/helpers'
+
+export default class Popup {
+  private selectors = {
+    trigger: '[data-popup]',
+    close: '[data-popup-close]',
+    content: '[data-popup-content]',
+    vkPlace: '[data-popup-vk-place]',
+  }
+
+  private boundHandlers: Map<Element, () => void> = new Map()
+  private vkVideos: Map<string, string> = new Map()
+  private wasLocked: boolean = false
+
+  constructor() {
+    this.init()
+  }
+
+  public open(dialogId: string): void {
+    this.closeAll()
+
+    const id = this.normalizeId(dialogId)
+    const dialog = document.querySelector<HTMLDialogElement>(`#${id}`)
+
+    if (dialog) {
+      this.wasLocked = document.documentElement.classList.contains('lock')
+
+      const vkCode = this.vkVideos.get(id)
+
+      if (vkCode) {
+        this.createVkVideo(dialog, vkCode)
+      }
+
+      dialog.showModal()
+      dialog.focus()
+
+      if (!this.wasLocked) {
+        bodyLock()
+      }
+    }
+  }
+
+  public close(dialogId: string): void {
+    const id = this.normalizeId(dialogId)
+    const dialog = document.querySelector<HTMLDialogElement>(`#${id}`)
+
+    if (dialog) {
+      this.cleanupVkVideo(dialog)
+      dialog.setAttribute('closing', '')
+
+      setTimeout(() => {
+        dialog.close()
+        dialog.removeAttribute('closing')
+      }, 500)
+
+      if (!this.wasLocked) {
+        bodyUnlock(500)
+      }
+    }
+  }
+
+  private init(): void {
+    this.addTriggerListeners()
+    this.addCloseListeners()
+  }
+
+  private closeDialog(dialogElement: HTMLDialogElement): void {
+    if (dialogElement.id) {
+      this.close(dialogElement.id)
+    }
+  }
+
+  private createVkVideo(dialog: HTMLDialogElement, vkCode: string): void {
+    const vkPlace = dialog.querySelector(this.selectors.vkPlace)
+
+    if (vkPlace) {
+      vkPlace.innerHTML = ''
+
+      const urlVideo = `https://vk.ru/video_ext.php?oid=-${vkCode}&autoplay=1`
+      const iframe = document.createElement('iframe')
+
+      iframe.setAttribute('allowfullscreen', '')
+      iframe.setAttribute('allow', 'autoplay; encrypted-media')
+      iframe.setAttribute('src', urlVideo)
+      iframe.style.width = '100%'
+      iframe.style.height = '100%'
+      iframe.style.border = 'none'
+
+      vkPlace.appendChild(iframe)
+    }
+  }
+
+  private cleanupVkVideo(dialog: HTMLDialogElement): void {
+    const vkPlace = dialog.querySelector(this.selectors.vkPlace)
+
+    if (vkPlace) {
+      vkPlace.innerHTML = ''
+    }
+  }
+
+  private closeAll(): void {
+    const openDialogs = document.querySelectorAll<HTMLDialogElement>('dialog[open]')
+
+    if (openDialogs.length > 0) {
+      openDialogs.forEach((dialog) => {
+        if (dialog.id) {
+          this.cleanupVkVideo(dialog)
+          dialog.setAttribute('closing', '')
+
+          setTimeout(() => {
+            dialog.close()
+            dialog.removeAttribute('closing')
+          }, 500)
+        }
+      })
+
+      if (!this.wasLocked) {
+        bodyUnlock(500)
+      }
+    }
+  }
+
+  private addTriggerListeners(): void {
+    const triggers = document.querySelectorAll<HTMLElement>(this.selectors.trigger)
+
+    triggers.forEach((trigger) => {
+      if (this.boundHandlers.has(trigger)) {
+        return
+      }
+
+      const handleClick = () => {
+        const dialogId = trigger.dataset.popup
+        const vkCode = trigger.dataset.popupVk
+
+        if (dialogId) {
+          if (vkCode) {
+            this.vkVideos.set(this.normalizeId(dialogId), vkCode)
+          }
+
+          this.open(dialogId)
+        }
+      }
+
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+
+          const dialogId = trigger.dataset.popup
+          const vkCode = trigger.dataset.popupVk
+
+          if (dialogId) {
+            if (vkCode) {
+              this.vkVideos.set(this.normalizeId(dialogId), vkCode)
+            }
+
+            this.open(dialogId)
+          }
+        }
+      }
+
+      trigger.addEventListener('click', handleClick)
+      trigger.addEventListener('keydown', handleKeyDown)
+
+      this.boundHandlers.set(trigger, () => {
+        trigger.removeEventListener('click', handleClick)
+        trigger.removeEventListener('keydown', handleKeyDown)
+      })
+    })
+  }
+
+  private addCloseListeners(): void {
+    const dialogs = document.querySelectorAll<HTMLDialogElement>('dialog')
+
+    dialogs.forEach((dialog) => {
+      const closeButton = dialog.querySelector<HTMLElement>(this.selectors.close)
+
+      if (closeButton && !this.boundHandlers.has(closeButton)) {
+        const handleCloseClick = () => {
+          this.closeDialog(dialog)
+        }
+
+        const handleCloseKeyDown = (event: KeyboardEvent) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            this.closeDialog(dialog)
+          }
+        }
+
+        closeButton.addEventListener('click', handleCloseClick)
+        closeButton.addEventListener('keydown', handleCloseKeyDown)
+
+        this.boundHandlers.set(closeButton, () => {
+          closeButton.removeEventListener('click', handleCloseClick)
+          closeButton.removeEventListener('keydown', handleCloseKeyDown)
+        })
+      }
+
+      if (!this.boundHandlers.has(dialog)) {
+        const handleBackdropClick = (event: MouseEvent) => {
+          const target = event.target as HTMLElement
+          const content = dialog.querySelector(this.selectors.content)
+
+          if (content && !content.contains(target)) {
+            this.closeDialog(dialog)
+          }
+        }
+
+        const handleEscapeKey = (event: KeyboardEvent) => {
+          if (event.key === 'Escape') {
+            event.preventDefault()
+            this.closeDialog(dialog)
+          }
+        }
+
+        const handleCancel = (event: Event) => {
+          event.preventDefault()
+          this.closeDialog(dialog)
+        }
+
+        dialog.addEventListener('click', handleBackdropClick)
+        dialog.addEventListener('keydown', handleEscapeKey)
+        dialog.addEventListener('cancel', handleCancel)
+
+        this.boundHandlers.set(dialog, () => {
+          dialog.removeEventListener('click', handleBackdropClick)
+          dialog.removeEventListener('keydown', handleEscapeKey)
+          dialog.removeEventListener('cancel', handleCancel)
+        })
+      }
+    })
+  }
+
+  private normalizeId(dialogId: string): string {
+    return dialogId.startsWith('#') ? dialogId.substring(1) : dialogId
+  }
+}
