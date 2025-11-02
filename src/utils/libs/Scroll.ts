@@ -1,4 +1,4 @@
-import { getHash, logger } from '@/utils/base/helpers'
+import { bodyLocking, getHash, LOCK_DURATION, logger } from '@/utils/base/helpers'
 import Menu from '@/utils/libs/Menu'
 
 class Scroll {
@@ -37,6 +37,10 @@ class Scroll {
 
     window.addEventListener('scroll', () => {
       const currentScroll = window.scrollY
+
+      if (bodyLocking()) {
+        return
+      }
 
       if (currentScroll <= 0) {
         body.classList.remove(scrollUp)
@@ -85,21 +89,32 @@ class Scroll {
         }
       }
 
-      if (document.documentElement.classList.contains('menu-open')) {
+      const isMenuOpen = document.documentElement.classList.contains('menu-open')
+
+      if (isMenuOpen) {
         this.menu.menuClose()
       }
 
-      let targetBlockElementPosition = targetBlockElement.getBoundingClientRect().top + scrollY
+      const performScroll = () => {
+        let targetBlockElementPosition = targetBlockElement.getBoundingClientRect().top + scrollY
 
-      targetBlockElementPosition = headerItemHeight ? targetBlockElementPosition - headerItemHeight : targetBlockElementPosition
-      targetBlockElementPosition = offsetTop ? targetBlockElementPosition - offsetTop : targetBlockElementPosition
+        targetBlockElementPosition = headerItemHeight ? targetBlockElementPosition - headerItemHeight : targetBlockElementPosition
+        targetBlockElementPosition = offsetTop ? targetBlockElementPosition - offsetTop : targetBlockElementPosition
 
-      window.scrollTo({
-        top: targetBlockElementPosition,
-        behavior: 'smooth',
-      })
+        window.scrollTo({
+          top: targetBlockElementPosition,
+          behavior: 'smooth',
+        })
 
-      logger(`[gotoBlock]: Юхуу...едем до ${targetBlock}`)
+        logger(`[gotoBlock]: Юхуу...едем до ${targetBlock}`)
+      }
+
+      if (isMenuOpen) {
+        setTimeout(performScroll, LOCK_DURATION)
+      }
+      else {
+        performScroll()
+      }
     }
   }
 

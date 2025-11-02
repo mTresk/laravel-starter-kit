@@ -6,6 +6,7 @@ export default class Popup {
     close: '[data-popup-close]',
     content: '[data-popup-content]',
     vkPlace: '[data-popup-vk-place]',
+    inlineVideo: 'video',
   }
 
   private boundHandlers: Map<Element, () => void> = new Map()
@@ -34,6 +35,8 @@ export default class Popup {
       dialog.showModal()
       dialog.focus()
 
+      this.handleInlineVideo(dialog, 'play')
+
       if (!this.wasLocked) {
         bodyLock()
       }
@@ -47,6 +50,8 @@ export default class Popup {
     if (dialog) {
       this.cleanupVkVideo(dialog)
       dialog.setAttribute('closing', '')
+
+      this.handleInlineVideo(dialog, 'pause')
 
       setTimeout(() => {
         dialog.close()
@@ -172,28 +177,30 @@ export default class Popup {
     const dialogs = document.querySelectorAll<HTMLDialogElement>('dialog')
 
     dialogs.forEach((dialog) => {
-      const closeButton = dialog.querySelector<HTMLElement>(this.selectors.close)
+      const closeButtons = dialog.querySelectorAll<HTMLElement>(this.selectors.close)
 
-      if (closeButton && !this.boundHandlers.has(closeButton)) {
-        const handleCloseClick = () => {
-          this.closeDialog(dialog)
-        }
-
-        const handleCloseKeyDown = (event: KeyboardEvent) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
+      closeButtons.forEach((closeButton) => {
+        if (!this.boundHandlers.has(closeButton)) {
+          const handleCloseClick = () => {
             this.closeDialog(dialog)
           }
+
+          const handleCloseKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              this.closeDialog(dialog)
+            }
+          }
+
+          closeButton.addEventListener('click', handleCloseClick)
+          closeButton.addEventListener('keydown', handleCloseKeyDown)
+
+          this.boundHandlers.set(closeButton, () => {
+            closeButton.removeEventListener('click', handleCloseClick)
+            closeButton.removeEventListener('keydown', handleCloseKeyDown)
+          })
         }
-
-        closeButton.addEventListener('click', handleCloseClick)
-        closeButton.addEventListener('keydown', handleCloseKeyDown)
-
-        this.boundHandlers.set(closeButton, () => {
-          closeButton.removeEventListener('click', handleCloseClick)
-          closeButton.removeEventListener('keydown', handleCloseKeyDown)
-        })
-      }
+      })
 
       if (!this.boundHandlers.has(dialog)) {
         const handleBackdropClick = (event: MouseEvent) => {
@@ -228,6 +235,16 @@ export default class Popup {
         })
       }
     })
+  }
+
+  private handleInlineVideo(dialog: HTMLDialogElement, action: 'play' | 'pause'): void {
+    const inlineVideo = dialog.querySelector<HTMLVideoElement>(this.selectors.inlineVideo)
+
+    if (!inlineVideo) {
+      return
+    }
+
+    inlineVideo[action]()
   }
 
   private normalizeId(dialogId: string): string {

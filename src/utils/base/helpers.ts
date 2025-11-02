@@ -1,5 +1,13 @@
 import type { IBreakpoint, IMediaQueryResult } from '@/types'
 
+let isBodyLockInProgress = false
+
+let scrollPosition = 0
+
+export const LOCK_DURATION = 500 as const
+
+export const SLIDE_DURATION = 500 as const
+
 export function getHash(): string | undefined {
   if (location.hash) {
     return location.hash.replace('#', '')
@@ -13,7 +21,7 @@ export function setHash(hash: string): void {
   history.pushState('', '', newHash)
 }
 
-export function slideUp(target: HTMLElement, duration: number = 500, showmore: number = 0): void {
+export function slideUp(target: HTMLElement, duration: number = SLIDE_DURATION, showmore: number = 0): void {
   if (!target.classList.contains('slide')) {
     target.classList.add('slide')
     target.style.transitionProperty = 'height, margin, padding'
@@ -51,7 +59,7 @@ export function slideUp(target: HTMLElement, duration: number = 500, showmore: n
   }
 }
 
-export function slideDown(target: HTMLElement, duration: number = 500, showmore: number = 0): void {
+export function slideDown(target: HTMLElement, duration: number = SLIDE_DURATION, showmore: number = 0): void {
   if (!target.classList.contains('slide')) {
     target.classList.add('slide')
     target.hidden = false
@@ -79,7 +87,7 @@ export function slideDown(target: HTMLElement, duration: number = 500, showmore:
       target.style.removeProperty('transition-duration')
       target.style.removeProperty('transition-property')
       target.classList.remove('slide')
-      // Создаем событие
+
       document.dispatchEvent(
         new CustomEvent('slideDownDone', {
           detail: {
@@ -91,7 +99,7 @@ export function slideDown(target: HTMLElement, duration: number = 500, showmore:
   }
 }
 
-export function slideToggle(target: HTMLElement, duration: number = 500): void {
+export function slideToggle(target: HTMLElement, duration: number = SLIDE_DURATION): void {
   if (target.hidden) {
     return slideDown(target, duration)
   }
@@ -99,15 +107,14 @@ export function slideToggle(target: HTMLElement, duration: number = 500): void {
   return slideUp(target, duration)
 }
 
-// eslint-disable-next-line import/no-mutable-exports
-export let bodyLockStatus = true
+export function bodyLocking(): boolean {
+  return isBodyLockInProgress
+}
 
-let scrollPosition = 0
-
-export function bodyUnlock(delay: number = 500) {
+export function bodyUnlock(delay: number = LOCK_DURATION) {
   const body = document.querySelector<HTMLBodyElement>('body')!
 
-  if (bodyLockStatus) {
+  if (!isBodyLockInProgress) {
     const lockPadding = document.querySelectorAll<HTMLElement>('[data-lp]')
 
     setTimeout(() => {
@@ -127,18 +134,18 @@ export function bodyUnlock(delay: number = 500) {
       window.scrollTo({ top: scrollPosition, behavior: 'instant' })
     }, delay)
 
-    bodyLockStatus = false
+    isBodyLockInProgress = true
 
     setTimeout(() => {
-      bodyLockStatus = true
+      isBodyLockInProgress = false
     }, delay)
   }
 }
 
-export function bodyLock(delay: number = 500) {
+export function bodyLock(delay: number = LOCK_DURATION) {
   const body = document.querySelector<HTMLBodyElement>('body')
 
-  if (bodyLockStatus) {
+  if (!isBodyLockInProgress) {
     const lockPadding = document.querySelectorAll<HTMLElement>('[data-lp]')
 
     scrollPosition = window.pageYOffset || document.documentElement.scrollTop
@@ -156,15 +163,15 @@ export function bodyLock(delay: number = 500) {
     body!.style.top = `-${scrollPosition}px`
     document.documentElement.classList.add('lock')
 
-    bodyLockStatus = false
+    isBodyLockInProgress = true
 
     setTimeout(() => {
-      bodyLockStatus = true
+      isBodyLockInProgress = false
     }, delay)
   }
 }
 
-export function bodyLockToggle(delay: number = 500) {
+export function bodyLockToggle(delay: number = LOCK_DURATION) {
   if (document.documentElement.classList.contains('lock')) {
     bodyUnlock(delay)
   }

@@ -12,12 +12,14 @@ import Menu from '@/utils/libs/Menu'
 import Quantity from '@/utils/libs/Quantity'
 import Map from '@/utils/libs/Map'
 import Accordion from '@/utils/libs/Accordion'
+import ShowMoreSimple from './utils/libs/ShowMoreSimple'
 
 // import '@/utils/script'
 // import '@/utils/forms/datepicker'
 // import '@/utils/forms/range'
 // import '@/utils/forms/inputmask'
 // import '@/utils/forms/select'
+// import '@/utils/base/agreement'
 // import '@/utils/base/sliders'
 // import '@/utils/base/scrollbar'
 // import '@/utils/base/tippy'
@@ -32,6 +34,7 @@ function initializeApp() {
   // new ResponsiveAdapter('max')
   // new ScrollWatcher({})
   // new ShowMore()
+  // new ShowMoreSimple()
   // new Spoilers()
   // new Tabs()
   // new Quantity()
